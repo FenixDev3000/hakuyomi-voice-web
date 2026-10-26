@@ -13,7 +13,7 @@ export const WS_BASE_URL =
   API_BASE_URL.replace(/^http/, "ws");
 
 export const API_AUTH_TOKEN =
-  import.meta.env.VITE_API_AUTH_TOKEN || "hakuyomi-secret-api-token-2026";
+  import.meta.env.VITE_API_AUTH_TOKEN || "";
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 export const ALLOWED_EXTENSIONS = [".mp3", ".wav"];

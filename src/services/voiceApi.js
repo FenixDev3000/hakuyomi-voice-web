@@ -1,6 +1,6 @@
 /**
  * Cliente desacoplado de comunicación con hakuyomi-voice-api:
- * - POST /api/v1/stt/upload (Subida de archivos .mp3 y .wav con límite 10 MB)
+ * - POST /api/v1/stt/upload (Subida de archivos .mp3, .wav, .ogg, .m4a, .flac, .webm, etc. hasta 10 MB)
  * - WS   /api/v1/stt/stream (Streaming de micrófono en tiempo real con whisper-base)
  * - POST /api/v1/tts        (Síntesis de voz con piper-tts / VITS)
  */
@@ -16,10 +16,23 @@ export const API_AUTH_TOKEN =
   import.meta.env.VITE_API_AUTH_TOKEN || "";
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-export const ALLOWED_EXTENSIONS = [".mp3", ".wav"];
+export const ALLOWED_EXTENSIONS = [
+  ".mp3",
+  ".wav",
+  ".ogg",
+  ".opus",
+  ".m4a",
+  ".flac",
+  ".webm",
+  ".aac",
+  ".wma",
+  ".mp4",
+  ".mpeg",
+  ".mpga",
+];
 
 /**
- * Valida en cliente que el archivo cumpla extensión (.mp3, .wav) y peso máximo (10 MB).
+ * Valida en cliente que el archivo cumpla con los formatos de audio soportados y peso máximo (10 MB).
  */
 export function validateAudioAttachment(file) {
   if (!file) {
@@ -29,7 +42,7 @@ export function validateAudioAttachment(file) {
   const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
   if (!hasValidExt) {
     throw new Error(
-      `Formato no permitido (${file.name}). Solo se aceptan archivos .mp3 y .wav.`
+      `Formato no permitido (${file.name}). Formatos soportados: .mp3, .wav, .ogg, .opus, .m4a, .flac, .webm, .aac.`
     );
   }
   if (file.size <= 0) {
@@ -45,7 +58,7 @@ export function validateAudioAttachment(file) {
 }
 
 /**
- * Envía un archivo de audio adjunto a POST /api/v1/stt/upload.
+ * Envía un archivo de audio adjunto (.ogg, .mp3, .wav, etc.) a POST /api/v1/stt/upload.
  */
 export async function uploadAudioForSTT(file, language = "es") {
   validateAudioAttachment(file);
@@ -126,19 +139,61 @@ function float32ToPCM16Buffer(float32Array) {
 }
 
 /**
+ * Construye un Blob WAV reproducible en el navegador a partir de una lista de ArrayBuffers PCM16 mono.
+ */
+export function buildWavBlobFromPCM16Chunks(pcmChunks, sampleRate = 16000) {
+  const totalBytes = pcmChunks.reduce((acc, buf) => acc + buf.byteLength, 0);
+  if (totalBytes === 0) return null;
+
+  const wavBuffer = new ArrayBuffer(44 + totalBytes);
+  const view = new DataView(wavBuffer);
+
+  const writeStr = (offset, str) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + totalBytes, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true); // Subchunk1Size (PCM)
+  view.setUint16(20, 1, true); // AudioFormat = 1 (PCM)
+  view.setUint16(22, 1, true); // NumChannels = 1 (Mono)
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // ByteRate
+  view.setUint16(32, 2, true); // BlockAlign
+  view.setUint16(34, 16, true); // BitsPerSample
+  writeStr(36, "data");
+  view.setUint32(40, totalBytes, true);
+
+  const uint8Out = new Uint8Array(wavBuffer, 44);
+  let offset = 0;
+  for (const chunk of pcmChunks) {
+    uint8Out.set(new Uint8Array(chunk), offset);
+    offset += chunk.byteLength;
+  }
+
+  return new Blob([wavBuffer], { type: "audio/wav" });
+}
+
+/**
  * Gestor de grabación del micrófono en el navegador y streaming por WebSocket
- * hacia `ws://.../api/v1/stt/stream`.
+ * hacia `ws://.../api/v1/stt/stream`. También conserva el audio grabado para reproducción local.
  */
 export class RealtimeMicStreamer {
   constructor({
     language = "es",
     onTranscript,
     onStateChange,
+    onRecordedBlob,
     onError,
   }) {
     this.language = language;
     this.onTranscript = onTranscript;
     this.onStateChange = onStateChange;
+    this.onRecordedBlob = onRecordedBlob;
     this.onError = onError;
 
     this.ws = null;
@@ -147,10 +202,12 @@ export class RealtimeMicStreamer {
     this.sourceNode = null;
     this.processorNode = null;
     this.isRecording = false;
+    this.recordedPCMChunks = [];
   }
 
   async start() {
     if (this.isRecording) return;
+    this.recordedPCMChunks = [];
 
     this.onStateChange?.({
       isConnecting: true,
@@ -167,7 +224,7 @@ export class RealtimeMicStreamer {
           noiseSuppression: true,
         },
       });
-    } catch (err) {
+    } catch {
       this.onStateChange?.({
         isConnecting: false,
         isRecording: false,
@@ -247,12 +304,14 @@ export class RealtimeMicStreamer {
     let chunksSentSinceInfer = 0;
 
     this.processorNode.onaudioprocess = (audioEvent) => {
-      if (!this.isRecording || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        return;
-      }
+      if (!this.isRecording) return;
       const inputData = audioEvent.inputBuffer.getChannelData(0);
       const pcm16Buffer = float32ToPCM16Buffer(inputData);
-      this.ws.send(pcm16Buffer);
+      this.recordedPCMChunks.push(pcm16Buffer);
+
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(pcm16Buffer);
+      }
 
       chunksSentSinceInfer += 1;
       if (chunksSentSinceInfer >= 6) {
@@ -274,6 +333,14 @@ export class RealtimeMicStreamer {
 
     this.isRecording = false;
     this._stopAudioNodes();
+
+    // Generar Blob WAV del micrófono grabado para poder reproducirlo en la web
+    if (this.recordedPCMChunks.length > 0) {
+      const wavBlob = buildWavBlobFromPCM16Chunks(this.recordedPCMChunks, 16000);
+      if (wavBlob) {
+        this.onRecordedBlob?.(wavBlob);
+      }
+    }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.onStateChange?.({

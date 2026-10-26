@@ -289,6 +289,63 @@ body {
   border-color: var(--border-highlight);
 }
 
+.btn-listen-mic {
+  color: #bae6fd;
+  border-color: var(--cyan-accent);
+  background: rgba(30, 159, 208, 0.14);
+}
+
+.inline-monitor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-dark);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+
+.monitor-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitor-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--cyan-accent);
+  background: rgba(30, 159, 208, 0.14);
+  border: 1px solid rgba(30, 159, 208, 0.35);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.monitor-track-name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.studio-audio-element {
+  height: 32px;
+  min-width: 280px;
+  flex: 1;
+  max-width: 460px;
+}
+
+.attachment-mini-player {
+  width: 100%;
+  height: 28px;
+  margin: 2px 0;
+}
+
+.attachment-btn-group {
+  display: inline-flex;
+  gap: 5px;
+}
+
 .textarea-wrapper {
   position: relative;
 }

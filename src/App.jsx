@@ -66,6 +66,7 @@ export default function App() {
   });
   const [wsIteration, setWsIteration] = useState(0);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordedMicUrl, setRecordedMicUrl] = useState(null);
   const micStreamerRef = useRef(null);
 
   // Estado del Panel "Archivos de Audio" (POST /api/v1/stt/upload)
@@ -74,9 +75,10 @@ export default function App() {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Estado de Síntesis TTS (POST /api/v1/tts) y Reproductor
+  // Estado de Síntesis TTS (POST /api/v1/tts) y Monitor de Reproducción
   const [isGeneratingTTS, setIsGeneratingTTS] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [audioLabel, setAudioLabel] = useState("Sin pista activa");
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const audioPlayerRef = useRef(null);
 
@@ -98,15 +100,20 @@ export default function App() {
     return () => clearInterval(timer);
   }, [micState.isRecording]);
 
+  // Sincronizar volumen y velocidad con el reproductor de audio
+  useEffect(() => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.volume = Math.max(0, Math.min(1, dsp.volume / 100));
+      audioPlayerRef.current.playbackRate = dsp.speed;
+    }
+  }, [dsp.volume, dsp.speed]);
+
   // Limpieza al desmontar
   useEffect(() => {
     return () => {
       micStreamerRef.current?.cleanup();
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
     };
-  }, [audioUrl]);
+  }, []);
 
   // Métricas de palabras y caracteres
   const trimmed = text.trim();
@@ -123,6 +130,18 @@ export default function App() {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const playUrlInMonitor = (url, label) => {
+    setAudioUrl(url);
+    setAudioLabel(label);
+    setTimeout(() => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.volume = Math.max(0, Math.min(1, dsp.volume / 100));
+        audioPlayerRef.current.playbackRate = dsp.speed;
+        audioPlayerRef.current.play().catch(() => {});
+      }
+    }, 60);
   };
 
   // =========================================================================
@@ -153,6 +172,15 @@ export default function App() {
         } else if (nextState.isRecording) {
           setStatusMessage("Grabando audio del micrófono en tiempo real...");
         }
+      },
+      onRecordedBlob: (wavBlob) => {
+        const micUrl = URL.createObjectURL(wavBlob);
+        setRecordedMicUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return micUrl;
+        });
+        setAudioUrl(micUrl);
+        setAudioLabel("🎙️ Última Grabación de Micrófono (WAV 16kHz)");
       },
       onTranscript: (eventData) => {
         const incoming = (eventData.text || "").trim();
@@ -197,11 +225,14 @@ export default function App() {
     }
 
     const fileId = `${Date.now()}_${file.name}`;
+    const localPreviewUrl = URL.createObjectURL(file);
+
     const newEntry = {
       id: fileId,
       file,
       name: file.name,
       size: file.size,
+      previewUrl: localPreviewUrl,
       status: "processing",
       transcript: "",
       durationSec: null,
@@ -209,6 +240,10 @@ export default function App() {
     };
 
     setAttachedFiles((prev) => [newEntry, ...prev]);
+    // También dejamos disponible el archivo adjunto en el monitor principal para reproducción inmediata
+    setAudioUrl(localPreviewUrl);
+    setAudioLabel(`🎵 Archivo Adjunto: ${file.name}`);
+
     setIsUploadingSTT(true);
     setStatusMessage(
       `Subiendo "${file.name}" a POST /api/v1/stt/upload y ejecutando whisper-base...`
@@ -302,6 +337,10 @@ export default function App() {
   const handlePlayOrSynthesize = async () => {
     setErrorMessage("");
     if (!trimmed) {
+      if (audioUrl && audioPlayerRef.current) {
+        audioPlayerRef.current.play().catch(() => {});
+        return;
+      }
       setErrorMessage("Escribe, dicta con el micrófono o adjunta un audio antes de reproducir.");
       return;
     }
@@ -311,20 +350,9 @@ export default function App() {
 
     try {
       const wavBlob = await synthesizeTextToAudio(trimmed, selectedVoice);
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
       const nextUrl = URL.createObjectURL(wavBlob);
-      setAudioUrl(nextUrl);
-      setStatusMessage("Audio generado con piper-tts. Reproduciendo...");
-
-      setTimeout(() => {
-        if (audioPlayerRef.current) {
-          audioPlayerRef.current.volume = dsp.volume / 100;
-          audioPlayerRef.current.playbackRate = dsp.speed;
-          audioPlayerRef.current.play().catch(() => {});
-        }
-      }, 60);
+      playUrlInMonitor(nextUrl, `🔊 Voz Sintetizada (${selectedVoice})`);
+      setStatusMessage("Audio generado con piper-tts y reproduciendo en el estudio.");
     } catch (err) {
       setErrorMessage(err.message || "Error al generar audio con piper-tts.");
       setStatusMessage("Error en síntesis TTS.");
@@ -357,7 +385,7 @@ export default function App() {
     }
     const a = document.createElement("a");
     a.href = audioUrl;
-    a.download = `hakuyomi_tts_${Date.now()}.wav`;
+    a.download = `hakuyomi_audio_${Date.now()}.wav`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -386,7 +414,7 @@ export default function App() {
             type="button"
             className="pill-btn"
             onClick={() => fileInputRef.current?.click()}
-            title="Adjuntar archivo de audio (.mp3, .wav)"
+            title="Adjuntar archivo de audio (.mp3, .wav, .ogg, .m4a, etc.)"
           >
             📁 Proyecto
           </button>
@@ -489,6 +517,23 @@ export default function App() {
                   )}
                 </button>
 
+                {/* Si ya grabó con el micrófono, botón rápido para escuchar su propia voz grabada */}
+                {recordedMicUrl && !micState.isRecording && (
+                  <button
+                    type="button"
+                    className="mini-tool-btn btn-listen-mic"
+                    onClick={() =>
+                      playUrlInMonitor(
+                        recordedMicUrl,
+                        "🎙️ Mi Grabación de Micrófono (WAV 16kHz)"
+                      )
+                    }
+                    title="Escuchar el audio capturado por tu micrófono"
+                  >
+                    🎧 Oír mi Mic
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className="mini-tool-btn"
@@ -516,8 +561,8 @@ export default function App() {
                 }`}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Escribe aquí, presiona el botón de micrófono para dictar en tiempo real por WebSocket, o arrastra un archivo de audio en el panel lateral..."
-                rows={7}
+                placeholder="Escribe aquí, presiona el botón de micrófono para dictar en tiempo real por WebSocket, o arrastra un archivo de audio (.ogg, .mp3, .wav) en el panel lateral..."
+                rows={6}
               />
 
               {/* Indicador flotante dentro del cuadro de texto mientras el modelo procesa */}
@@ -531,6 +576,26 @@ export default function App() {
                   </span>
                 </div>
               )}
+            </div>
+
+            {/* MONITOR DE AUDIO INTEGRADO EN PÁGINA */}
+            <div className="inline-monitor-bar">
+              <div className="monitor-info">
+                <span className="monitor-tag">MONITOR DE AUDIO</span>
+                <span className="monitor-track-name">{audioLabel}</span>
+              </div>
+              <audio
+                ref={audioPlayerRef}
+                controls
+                className="studio-audio-element"
+                src={audioUrl || undefined}
+                onPlay={() => setIsPlayingAudio(true)}
+                onPause={() => setIsPlayingAudio(false)}
+                onEnded={() => {
+                  setIsPlayingAudio(false);
+                  setStatusMessage("Reproducción finalizada.");
+                }}
+              />
             </div>
           </section>
 
@@ -697,7 +762,7 @@ export default function App() {
             <div>
               <h3>📂 Archivos de Audio</h3>
               <span className="sidebar-subtitle">
-                POST /api/v1/stt/upload • Máx. 10 MB
+                .OGG, .MP3, .WAV, .M4A, .OPUS • Máx. 10 MB
               </span>
             </div>
 
@@ -707,7 +772,7 @@ export default function App() {
               className="clip-attach-btn"
               onClick={handleOpenClipFilePicker}
               disabled={isUploadingSTT}
-              title="Adjuntar archivo de audio pregrabado (.mp3, .wav)"
+              title="Adjuntar archivo de audio pregrabado (.ogg, .mp3, .wav, .m4a, .flac, .webm)"
             >
               {isUploadingSTT ? (
                 <span className="spinner spinner-xs" />
@@ -720,7 +785,7 @@ export default function App() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".mp3,.wav,audio/mpeg,audio/wav"
+              accept=".mp3,.wav,.ogg,.opus,.m4a,.flac,.webm,.aac,.wma,.mp4,audio/*,video/*"
               className="hidden-file-input"
               onChange={handleFileInputChange}
             />
@@ -758,13 +823,13 @@ export default function App() {
                   Arrastra y suelta tu audio aquí
                 </p>
                 <span className="drop-hint">
-                  o haz clic en el clip para seleccionar (.MP3, .WAV hasta 10 MB)
+                  Soporta .OGG, .MP3, .WAV, .M4A, .FLAC, .WEBM (hasta 10 MB)
                 </span>
               </>
             )}
           </div>
 
-          {/* LISTA DE ARCHIVOS ADJUNTOS PROCESADOS */}
+          {/* LISTA DE ARCHIVOS ADJUNTOS PROCESADOS CON REPRODUCTOR INTEGRADO */}
           <div className="attached-files-list">
             <div className="attached-list-title">
               <span>Historial de Adjuntos ({attachedFiles.length})</span>
@@ -781,7 +846,7 @@ export default function App() {
 
             {attachedFiles.length === 0 ? (
               <div className="empty-attachments">
-                Sin archivos adjuntos en esta sesión. Sube un archivo MP3 o WAV para transcribirlo al editor.
+                Sin archivos adjuntos en esta sesión. Sube un archivo OGG, MP3 o WAV para reproducirlo y transcribirlo al editor.
               </div>
             ) : (
               attachedFiles.map((item) => (
@@ -792,6 +857,15 @@ export default function App() {
                     </span>
                     <span className="attachment-size">{formatBytes(item.size)}</span>
                   </div>
+
+                  {/* Reproductor embebido para el archivo adjunto (.ogg, .mp3, .wav) */}
+                  {item.previewUrl && (
+                    <audio
+                      controls
+                      src={item.previewUrl}
+                      className="attachment-mini-player"
+                    />
+                  )}
 
                   {item.status === "processing" && (
                     <div className="attachment-status-row">
@@ -808,19 +882,33 @@ export default function App() {
                       <div className="attachment-meta">
                         <span>⏱️ {item.durationSec ?? 0}s</span>
                         <span>⚡ {item.processingMs ?? 0} ms</span>
-                        <button
-                          type="button"
-                          className="insert-again-btn"
-                          onClick={() =>
-                            setText((prev) =>
-                              prev.trim()
-                                ? `${prev.trim()}\n${item.transcript}`
-                                : item.transcript
-                            )
-                          }
-                        >
-                          + Insertar
-                        </button>
+                        <div className="attachment-btn-group">
+                          <button
+                            type="button"
+                            className="insert-again-btn"
+                            onClick={() =>
+                              playUrlInMonitor(
+                                item.previewUrl,
+                                `🎵 Adjunto: ${item.name}`
+                              )
+                            }
+                          >
+                            ▶ Oír
+                          </button>
+                          <button
+                            type="button"
+                            className="insert-again-btn"
+                            onClick={() =>
+                              setText((prev) =>
+                                prev.trim()
+                                  ? `${prev.trim()}\n${item.transcript}`
+                                  : item.transcript
+                              )
+                            }
+                          >
+                            + Texto
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
@@ -834,18 +922,6 @@ export default function App() {
           </div>
         </aside>
       </div>
-
-      {/* ELEMENTO AUDIO OCULTO PARA REPRODUCCIÓN */}
-      <audio
-        ref={audioPlayerRef}
-        src={audioUrl || undefined}
-        onPlay={() => setIsPlayingAudio(true)}
-        onPause={() => setIsPlayingAudio(false)}
-        onEnded={() => {
-          setIsPlayingAudio(false);
-          setStatusMessage("Reproducción finalizada.");
-        }}
-      />
 
       {/* BARRA DE TRANSPORTE INFERIOR (REPRODUCIR, PAUSAR, DETENER, GUARDAR AUDIO) */}
       <section className="transport-bar">
@@ -911,7 +987,7 @@ export default function App() {
           <span className="hw-badge">🖥️ CPU (int8)</span>
           <span className="engine-badge">🎙️ whisper-base (~140MB)</span>
           <span className="engine-badge">🔊 piper-tts (~150MB)</span>
-          <span className="ver-badge">v1.0.0</span>
+          <span className="ver-badge">v1.1.0</span>
         </div>
       </footer>
     </div>

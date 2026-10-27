@@ -9,6 +9,16 @@ import "./App.css";
 
 const VOICE_BANK = [
   {
+    id: "es_MX-cori-high",
+    flag: "🇲🇽",
+    label: "Latina (es-MX) CORI — Piper/VITS ♀",
+  },
+  {
+    id: "es_MX-claude-high",
+    flag: "🇲🇽",
+    label: "Latino (es-MX) CLAUDE — Piper/VITS ♂",
+  },
+  {
     id: "es_MX-ald-medium",
     flag: "🇲🇽",
     label: "Latino (es-MX) ALD — Piper/VITS ♂",
@@ -22,16 +32,6 @@ const VOICE_BANK = [
     id: "es_ES-sharvard-medium",
     flag: "🇪🇸",
     label: "Española (es-ES) DORA — Neuronal ♀",
-  },
-  {
-    id: "es_LAT-camila-medium",
-    flag: "🌎",
-    label: "Latina (es-LAT) CAMILA — Neuronal ♀",
-  },
-  {
-    id: "es_LAT-lucas-medium",
-    flag: "🌎",
-    label: "Latino (es-LAT) LUCAS — Neuronal ♂",
   },
 ];
 

@@ -98,7 +98,7 @@ export async function uploadAudioForSTT(file, language = "es") {
 /**
  * Solicita síntesis de voz (TTS) a POST /api/v1/tts y retorna el Blob WAV.
  */
-export async function synthesizeTextToAudio(text, voice = "es_MX-ald-medium") {
+export async function synthesizeTextToAudio(text, voice = "es_MX-cori-high") {
   const response = await fetch(`${API_BASE_URL}/api/v1/tts`, {
     method: "POST",
     headers: {

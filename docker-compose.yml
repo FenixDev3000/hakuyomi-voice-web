@@ -1,24 +1,28 @@
+# Compatible con docker-compose v1 (1.29.2), igual que la VM. Sin `name:` de primer nivel.
+# Levantar con: docker-compose -p hakuyomi-voice-web up -d --build
+version: "3.8"
+
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    image: hakuyomi-voice-web:latest
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-ws://localhost:8000}
+        VITE_API_AUTH_TOKEN: ${VITE_API_AUTH_TOKEN}
+    image: hakuyomi-voice-web:1.0.0
     container_name: hakuyomi_voice_web
-    restart: unless-stopped
-    user: "1000:1000"
+    restart: always
     security_opt:
       - no-new-privileges:true
-    env_file:
-      - path: .env
-        required: true
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
-      VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-ws://localhost:8000}
-      VITE_API_AUTH_TOKEN: ${VITE_API_AUTH_TOKEN}
+    cap_drop:
+      - ALL
+    # En la VM, WEB_BIND y el puerto los pone Miyo.
     ports:
-      - "5173:5173"
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-5173}:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

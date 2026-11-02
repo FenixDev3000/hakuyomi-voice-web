@@ -31,13 +31,15 @@ export default function AuthGate() {
 
   return (
     <>
-      <div className="session-bar">
-        <span className="session-email" title={user.email}>
-          {user.email}
-        </span>
-        <button type="button" className="session-logout" onClick={() => logout()}>
-          Cerrar sesión
-        </button>
+      <div className="session-row">
+        <div className="session-bar">
+          <span className="session-email" title={user.email}>
+            {user.email}
+          </span>
+          <button type="button" className="session-logout" onClick={() => logout()}>
+            Cerrar sesión
+          </button>
+        </div>
       </div>
       <App />
     </>

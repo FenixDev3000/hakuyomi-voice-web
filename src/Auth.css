@@ -323,17 +323,22 @@
 }
 
 /* --- Barra de sesión dentro de la app --- */
+/* Fila propia sobre la app: ya no tapa los controles de la barra superior */
+.session-row {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 10px 18px 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .session-bar {
-  position: fixed;
-  top: 10px;
-  right: 14px;
-  z-index: 50;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 10px;
-  background: var(--bg-card, #111622);
-  border: 1px solid var(--border-dark, #222b3d);
+  padding: 5px 6px 5px 12px;
+  background: var(--bg-card, #0e1823);
+  border: 1px solid var(--border-highlight, #274156);
   border-radius: 999px;
   font-size: 0.78rem;
   color: var(--text-muted, #8b9bb4);
@@ -351,7 +356,16 @@
   border: 1px solid var(--border-highlight, #2e3b52);
   border-radius: 999px;
   background: transparent;
-  color: var(--text-main, #e2e8f0);
+  color: var(--cyan-accent, #3fd0d2);
   font-size: 0.78rem;
   cursor: pointer;
+}
+
+.session-logout:hover {
+  background: rgba(63, 208, 210, 0.12);
+}
+
+.session-logout:focus-visible {
+  outline: 2px solid var(--cyan-accent, #3fd0d2);
+  outline-offset: 2px;
 }

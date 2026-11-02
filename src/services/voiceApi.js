@@ -5,15 +5,10 @@
  * - POST /api/v1/tts        (Síntesis de voz con piper-tts / VITS)
  */
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+import { API_BASE_URL, WS_BASE_URL } from "./config.js";
+import { authFetch, getFreshAccessToken } from "./auth.js";
 
-export const WS_BASE_URL =
-  import.meta.env.VITE_WS_BASE_URL ||
-  API_BASE_URL.replace(/^http/, "ws");
-
-export const API_AUTH_TOKEN =
-  import.meta.env.VITE_API_AUTH_TOKEN || "";
+export { API_BASE_URL, WS_BASE_URL };
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 export const ALLOWED_EXTENSIONS = [
@@ -67,12 +62,8 @@ export async function uploadAudioForSTT(file, language = "es") {
   formData.append("file", file);
   formData.append("language", language);
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/stt/upload`, {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/stt/upload`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${API_AUTH_TOKEN}`,
-      "X-API-Key": API_AUTH_TOKEN,
-    },
     body: formData,
   });
 
@@ -99,12 +90,10 @@ export async function uploadAudioForSTT(file, language = "es") {
  * Solicita síntesis de voz (TTS) a POST /api/v1/tts y retorna el Blob WAV.
  */
 export async function synthesizeTextToAudio(text, voice = "es_MX-cori-high") {
-  const response = await fetch(`${API_BASE_URL}/api/v1/tts`, {
+  const response = await authFetch(`${API_BASE_URL}/api/v1/tts`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_AUTH_TOKEN}`,
-      "X-API-Key": API_AUTH_TOKEN,
     },
     body: JSON.stringify({ text, voice }),
   });
@@ -235,9 +224,17 @@ export class RealtimeMicStreamer {
       );
     }
 
+    let accessToken;
+    try {
+      accessToken = await getFreshAccessToken();
+    } catch (authErr) {
+      this.cleanup();
+      throw authErr;
+    }
+    // El navegador no permite cabeceras en WebSocket: el access token (corto) va en la URL.
     const wsUrl = `${WS_BASE_URL}/api/v1/stt/stream?lang=${encodeURIComponent(
       this.language
-    )}&token=${encodeURIComponent(API_AUTH_TOKEN)}`;
+    )}&token=${encodeURIComponent(accessToken)}`;
 
     return new Promise((resolve, reject) => {
       const socket = new WebSocket(wsUrl);

@@ -8,10 +8,9 @@ RUN npm ci
 COPY . .
 
 # La URL de la API entra en el build; el build falla si falta.
-# AVISO: todo VITE_* queda visible en el bundle del navegador. Ver docs/PLAN.md (token).
+# Todo VITE_* queda visible en el bundle: aquí solo van URLs públicas, nunca secretos.
 ARG VITE_API_BASE_URL
 ARG VITE_WS_BASE_URL
-ARG VITE_API_AUTH_TOKEN
 RUN test -n "$VITE_API_BASE_URL" && test -n "$VITE_WS_BASE_URL"
 RUN npm run build
 

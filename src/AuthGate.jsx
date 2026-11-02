@@ -18,7 +18,7 @@ export default function AuthGate() {
   if (cargando) {
     return (
       <div className="auth-page">
-        <div className="auth-card">
+        <div className="auth-loading">
           <p className="auth-muted">Cargando…</p>
         </div>
       </div>

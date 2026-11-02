@@ -81,7 +81,7 @@ async function postJson(path, body) {
   return data;
 }
 
-export function validarCredenciales(email, password, { registro = false } = {}) {
+export function validarCredenciales(email, password, { registro = false, codigo = "" } = {}) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || "").trim())) {
     throw new Error("Ingresa un correo válido.");
   }
@@ -95,6 +95,9 @@ export function validarCredenciales(email, password, { registro = false } = {}) 
     if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
       throw new Error("La contraseña debe incluir al menos una letra y un número.");
     }
+    if (!(codigo || "").trim()) {
+      throw new Error("Ingresa el código único.");
+    }
   }
 }
 
@@ -107,9 +110,16 @@ export function currentUser() {
   return session.user;
 }
 
-export async function register(email, password) {
-  validarCredenciales(email, password, { registro: true });
-  aplicarTokens(await postJson("/api/v1/auth/register", { email: email.trim(), password }));
+export async function register(email, password, codigo) {
+  validarCredenciales(email, password, { registro: true, codigo });
+  // El código único lo valida solo el servidor; no existe en el código de la web.
+  aplicarTokens(
+    await postJson("/api/v1/auth/register", {
+      email: email.trim(),
+      password,
+      invite_code: codigo.trim(),
+    })
+  );
 }
 
 export async function login(email, password) {

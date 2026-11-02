@@ -22,6 +22,7 @@ export default function AuthScreen() {
   const [modo, setModo] = useState("login"); // "login" | "registro"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [verPassword, setVerPassword] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -32,6 +33,7 @@ export default function AuthScreen() {
     setModo(nuevo);
     setError("");
     setPassword("");
+    setCodigo("");
   };
 
   const enviar = async (event) => {
@@ -40,7 +42,7 @@ export default function AuthScreen() {
     setError("");
     setEnviando(true);
     try {
-      if (esRegistro) await register(email, password);
+      if (esRegistro) await register(email, password, codigo);
       else await login(email, password);
     } catch (err) {
       setError(err.message || "No se pudo completar la operación.");
@@ -146,6 +148,23 @@ export default function AuthScreen() {
             </div>
             {esRegistro && (
               <p className="auth-hint">Al menos 10 caracteres, con una letra y un número.</p>
+            )}
+
+            {esRegistro && (
+              <>
+                <label htmlFor="auth-codigo">Código único</label>
+                <input
+                  id="auth-codigo"
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="Código que te dio el equipo"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value)}
+                  maxLength={128}
+                  required
+                />
+              </>
             )}
 
             {error && (

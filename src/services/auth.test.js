@@ -16,11 +16,24 @@ describe("validarCredenciales", () => {
   });
 
   it("en registro exige 10 caracteres, letra y número", () => {
-    const op = { registro: true };
+    const op = { registro: true, codigo: "cualquier-codigo" };
     expect(() => validarCredenciales("a@b.com", "corta1", op)).toThrow(/10 caracteres/);
     expect(() => validarCredenciales("a@b.com", "soloLetrasLargas", op)).toThrow(/número/);
     expect(() => validarCredenciales("a@b.com", "12345678901", op)).toThrow(/letra/);
     expect(() => validarCredenciales("a@b.com", "ClaveSegura2026", op)).not.toThrow();
+  });
+
+  it("en registro exige el código único (solo que no esté vacío; lo valida el servidor)", () => {
+    const base = { registro: true };
+    expect(() => validarCredenciales("a@b.com", "ClaveSegura2026", base)).toThrow(/código único/);
+    expect(() => validarCredenciales("a@b.com", "ClaveSegura2026", { ...base, codigo: "   " })).toThrow(
+      /código único/
+    );
+    expect(() => validarCredenciales("a@b.com", "ClaveSegura2026", { ...base, codigo: "x" })).not.toThrow();
+  });
+
+  it("el login no pide código único", () => {
+    expect(() => validarCredenciales("a@b.com", "x")).not.toThrow();
   });
 });
 

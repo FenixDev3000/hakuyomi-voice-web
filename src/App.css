@@ -1,24 +1,24 @@
 :root {
-  --bg-root: #0a0d14;
-  --bg-card: #111622;
-  --bg-card-inner: #0c101a;
-  --bg-elevated: #192030;
-  --border-dark: #222b3d;
-  --border-highlight: #2e3b52;
+  --bg-root: #08121a;
+  --bg-card: #0e1823;
+  --bg-card-inner: #0a131c;
+  --bg-elevated: #15222f;
+  --border-dark: #1c2e3d;
+  --border-highlight: #274156;
 
   --text-main: #e2e8f0;
   --text-muted: #8b9bb4;
   --text-dim: #5c6b84;
 
-  --blue-primary: #0f62fe;
-  --blue-gradient: linear-gradient(180deg, #1d74f5 0%, #0b4fd4 100%);
-  --blue-glow: rgba(29, 116, 245, 0.35);
+  --blue-primary: #0b7f85;
+  --blue-gradient: linear-gradient(180deg, #14a0a7 0%, #0b7f85 100%);
+  --blue-glow: rgba(26, 169, 176, 0.38);
 
   --orange-primary: #d96b1f;
   --orange-gradient: linear-gradient(180deg, #e87a24 0%, #b85312 100%);
   --orange-glow: rgba(232, 122, 36, 0.35);
 
-  --cyan-accent: #1e9fd0;
+  --cyan-accent: #3fd0d2; /* agua marina (marca) */
   --red-rec: #ef4444;
   --green-ok: #10b981;
 }
@@ -31,6 +31,10 @@
 
 body {
   background-color: var(--bg-root);
+  background-image:
+    radial-gradient(900px 480px at 12% -8%, rgba(26, 169, 176, 0.16), transparent 62%),
+    radial-gradient(700px 420px at 100% 100%, rgba(26, 169, 176, 0.08), transparent 60%);
+  background-attachment: fixed;
   color: var(--text-main);
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   min-height: 100vh;
@@ -70,7 +74,7 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: rgba(30, 159, 208, 0.16);
+  background: rgba(63, 208, 210, 0.16);
   border: 1px solid var(--cyan-accent);
   color: var(--cyan-accent);
   font-weight: 800;
@@ -239,7 +243,7 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 0 12px rgba(30, 159, 208, 0.2);
+  box-shadow: 0 0 12px rgba(63, 208, 210, 0.2);
   transition: all 0.2s ease;
 }
 
@@ -292,7 +296,7 @@ body {
 .btn-listen-mic {
   color: #bae6fd;
   border-color: var(--cyan-accent);
-  background: rgba(30, 159, 208, 0.14);
+  background: rgba(63, 208, 210, 0.14);
 }
 
 .inline-monitor-bar {
@@ -317,8 +321,8 @@ body {
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--cyan-accent);
-  background: rgba(30, 159, 208, 0.14);
-  border: 1px solid rgba(30, 159, 208, 0.35);
+  background: rgba(63, 208, 210, 0.14);
+  border: 1px solid rgba(63, 208, 210, 0.35);
   padding: 2px 7px;
   border-radius: 5px;
 }
@@ -420,8 +424,8 @@ body {
 .model-tag {
   font-size: 0.72rem;
   color: var(--cyan-accent);
-  background: rgba(30, 159, 208, 0.12);
-  border: 1px solid rgba(30, 159, 208, 0.35);
+  background: rgba(63, 208, 210, 0.12);
+  border: 1px solid rgba(63, 208, 210, 0.35);
   padding: 2px 8px;
   border-radius: 6px;
 }
@@ -560,7 +564,7 @@ body {
 }
 
 .clip-attach-btn:hover:not(:disabled) {
-  background: rgba(30, 159, 208, 0.22);
+  background: rgba(63, 208, 210, 0.22);
 }
 
 .hidden-file-input {
@@ -586,7 +590,7 @@ body {
 .dropzone-box:hover,
 .dropzone-active {
   border-color: var(--cyan-accent);
-  background: rgba(30, 159, 208, 0.08);
+  background: rgba(63, 208, 210, 0.08);
 }
 
 .dropzone-loading {
@@ -751,7 +755,7 @@ body {
 .btn-play-blue {
   background: var(--blue-gradient);
   color: #ffffff;
-  border-color: #3b82f6;
+  border-color: #3fd0d2;
   box-shadow: 0 4px 16px var(--blue-glow);
 }
 
@@ -773,7 +777,7 @@ body {
   display: inline-block;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #38bdf8;
+  border-top-color: #3fd0d2;
   animation: spinAnim 0.75s linear infinite;
 }
 
